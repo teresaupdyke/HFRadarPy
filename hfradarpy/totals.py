@@ -1,8 +1,16 @@
 import logging
+from hfradarpy.common import fileParser, addBoundingBoxMetadata
+from hfradarpy.calc import true2mathAngle, dms2dd, evaluateGDOP, createLonLatGridFromBB, createLonLatGridFromBBwera, createLonLatGridFromTopLeftPointWera, lonlat2km, gridded_index, calc_index, scircle1, inpolygon
+from hfradarpy.io.nc import make_encoding
+from hfradarpy.hfrnet import *
+import os
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+import numpy as np
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 import math
-import numpy as np
 import xarray as xr
 import netCDF4
 import pandas as pd
@@ -11,12 +19,7 @@ from shapely.geometry import Point
 import geopandas as gpd
 import re
 import io
-import os
 from pathlib import Path
-from hfradarpy.common import fileParser, addBoundingBoxMetadata
-from hfradarpy.calc import true2mathAngle, dms2dd, evaluateGDOP, createLonLatGridFromBB, createLonLatGridFromBBwera, createLonLatGridFromTopLeftPointWera, lonlat2km, gridded_index, calc_index, scircle1, inpolygon
-from hfradarpy.io.nc import make_encoding
-from hfradarpy.hfrnet import *
 from collections import OrderedDict
 import json
 import fnmatch

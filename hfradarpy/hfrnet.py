@@ -1,5 +1,10 @@
 import logging
+import os
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
 import numpy as np
+import time
 import math
 from multiprocessing import Pool, Manager
 from functools import partial
@@ -378,6 +383,7 @@ def rtvComputeTotals(compTotInput, radials, rtvInfoObj) -> RtvTotals:
     gridNewRadIndex = np.zeros(nArrayLen, dtype=bool)
     nSites = len(radials)
 
+    #tc00 = time.perf_counter()
     # loop over each radial dataset (site)
     for iRadial in range(nSites):
 
@@ -412,6 +418,8 @@ def rtvComputeTotals(compTotInput, radials, rtvInfoObj) -> RtvTotals:
     sPoint = np.argwhere(np.logical_and(gridNewRadIndex,
                                         (gridAllRadCount >= rtvInfoObj.min_rad_sites)))
 
+    #print("filter grid points", time.perf_counter() - tc00)
+
     if len(sPoint) == 0:
         logging.info('No potential total solution points found')
         return U_totals
@@ -442,6 +450,7 @@ def rtvComputeTotals(compTotInput, radials, rtvInfoObj) -> RtvTotals:
     scircle_yfield_arr = getattr(compTotInput.grid, f"{scircle_yfield}")
 
     nPoints = len(sPoint)
+    logging.info(f"Processing {nPoints} grid points in serial")
 
     # Loop over each potential solution grid point
     for iPoint in range(nPoints):
@@ -462,6 +471,7 @@ def rtvComputeTotals(compTotInput, radials, rtvInfoObj) -> RtvTotals:
         gridloc[0, 1] = compTotInput.grid.ocean_xy[1][solutionIndex]
 
         # Loop over each site to find radials within the grid point's search radius
+        #tc01 = time.perf_counter()
         for iSite in range(nSites):
 
             currRadial = radials[iSite]
@@ -477,12 +487,15 @@ def rtvComputeTotals(compTotInput, radials, rtvInfoObj) -> RtvTotals:
                 if (not containsNewData) and (currRadial.isNew):
                     containsNewData = True
 
+        #print("collect radial info for each site with in polygon", time.perf_counter() - tc01)
+
         if len(rpSpeed) > 0:
             rpSpeed = np.concatenate(rpSpeed)
             rpHeading = np.concatenate(rpHeading)
             rpLon = np.concatenate(rpLon)
             rpLat = np.concatenate(rpLat)
 
+    
         # See if we have:
         #  (1) New radial data with
         #  (2) enough contributing sites and
@@ -495,7 +508,9 @@ def rtvComputeTotals(compTotInput, radials, rtvInfoObj) -> RtvTotals:
             if rtvInfoObj.method == 'uwls':
                 TotalComp[solutionIndex] = uwlsTotal(rpSpeed, rpHeading)
             elif rtvInfoObj.method == 'oi':
+                #tc02 = time.perf_counter()
                 TotalComp[solutionIndex] = oiTotal(rpSpeed, rpHeading, rpLon, rpLat, gridloc, rtvInfoObj.oi_mdlvar, rtvInfoObj.oi_errvar,rtvInfoObj.oi_sx,rtvInfoObj.oi_sy,rtvInfoObj.oi_weighting)
+                #print("oiTotal computation", time.perf_counter() - tc02)
             else:
                 TotalComp[solutionIndex] = []
             nRads[solutionIndex] = len(rpSpeed)
